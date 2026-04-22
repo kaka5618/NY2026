@@ -62,7 +62,7 @@ export const CHARACTERS: Record<CharacterId, CharacterDefinition> = {
     avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
     accentFrom: "#7c6cf0",
     accentTo: "#a78bfa",
-    xfyunOnlineTtsVcn: "x4_xiaoyan",
+    xfyunOnlineTtsVcn: "x4_lingfeibo_profnews",
     imageLibrary: {
       portrait:
         "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&fit=crop",
@@ -93,7 +93,7 @@ ${SAFETY_AND_MULTIMODAL_RULES}`,
     avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop",
     accentFrom: "#334155",
     accentTo: "#0ea5e9",
-    xfyunOnlineTtsVcn: "x2_aisjiuxu",
+    xfyunOnlineTtsVcn: "x4_mingyu_livestream_ec",
     imageLibrary: {
       portrait:
         "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800&fit=crop",
@@ -125,7 +125,7 @@ ${SAFETY_AND_MULTIMODAL_RULES}`,
     avatarUrl: "https://images.unsplash.com/photo-1539578705356-ce5a7099dd57?w=400&h=400&fit=crop",
     accentFrom: "#f97316",
     accentTo: "#facc15",
-    xfyunOnlineTtsVcn: "x4_lingxiaoxuan",
+    xfyunOnlineTtsVcn: "x4_chaoge",
     imageLibrary: {
       portrait:
         "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800&fit=crop",
@@ -157,7 +157,7 @@ ${SAFETY_AND_MULTIMODAL_RULES}`,
     avatarUrl: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop",
     accentFrom: "#7f1d1d",
     accentTo: "#b45309",
-    xfyunOnlineTtsVcn: "x3_aisjinger",
+    xfyunOnlineTtsVcn: "x4_chaoge",
     imageLibrary: {
       portrait:
         "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&fit=crop",

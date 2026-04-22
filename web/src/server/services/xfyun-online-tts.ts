@@ -1,5 +1,7 @@
 import { CHARACTERS, type CharacterId } from "@vb/shared";
+import { loadEnvConfig } from "@next/env";
 import { createHmac } from "crypto";
+import path from "path";
 
 /**
  * 讯飞在线 TTS 业务错误，供路由层映射 HTTP 状态码。
@@ -25,6 +27,19 @@ export class XfyunOnlineTtsError extends Error {
 function devLog(tag: string, data: Record<string, unknown>): void {
   if (process.env.NODE_ENV !== "development") return;
   console.log(`[xfyun-online-tts] ${tag}`, JSON.stringify(data));
+}
+
+let envBootstrapped = false;
+
+/**
+ * 兜底确保运行时读取到根目录 `.env.local`（规避多终端/不同 cwd 启动差异）。
+ */
+function ensureEnvLoaded(): void {
+  if (envBootstrapped) return;
+  const cwd = process.cwd();
+  loadEnvConfig(cwd);
+  loadEnvConfig(path.resolve(cwd, ".."));
+  envBootstrapped = true;
 }
 
 /**
@@ -70,11 +85,11 @@ function resolveVoice(characterId: CharacterId): string {
     jiangyubai: process.env.XFYUN_ONLINE_TTS_VCN_JIANGYUBAI,
     huoyanchen: process.env.XFYUN_ONLINE_TTS_VCN_HUOYANCHEN,
   };
-  return (
-    envMap[characterId]?.trim() ||
-    process.env.XFYUN_ONLINE_TTS_VCN_DEFAULT?.trim() ||
-    CHARACTERS[characterId].xfyunOnlineTtsVcn
-  );
+  const roleVoice = envMap[characterId]?.trim();
+  const globalVoice = process.env.XFYUN_ONLINE_TTS_VCN_DEFAULT?.trim();
+  if (roleVoice) return roleVoice;
+  if (globalVoice) return globalVoice;
+  return CHARACTERS[characterId].xfyunOnlineTtsVcn;
 }
 
 /**
@@ -84,6 +99,7 @@ export async function synthesizeXfyunOnlineTtsMp3(params: {
   characterId: CharacterId;
   text: string;
 }): Promise<Buffer> {
+  ensureEnvLoaded();
   process.env.WS_NO_BUFFER_UTIL = "1";
   process.env.WS_NO_UTF_8_VALIDATE = "1";
   const { default: WebSocket } = await import("ws");
