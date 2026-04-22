@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CharacterId, ReplyType } from "@vb/shared";
 import { ImageCard } from "@/components/ImageCard";
+import { VoiceBar } from "@/components/VoiceBar";
 import { postChat, fetchCharacters, type CharacterPublic } from "@/lib/api";
 import { loadSession, saveSession, type StoredChatMessage } from "@/lib/db";
 import { computeModalityStats } from "@/lib/stats";
@@ -99,6 +100,7 @@ export function ChatPageClient({ characterId: rawId }: ChatPageClientProps) {
         createdAt: Date.now(),
         content: r.content,
         reply_type: replyType,
+        voice_text: r.voice_text,
         image_ref: r.image_ref,
         image_url: r.resolved_image_url,
         safety_note: r.safety_note,
@@ -161,7 +163,7 @@ export function ChatPageClient({ characterId: rawId }: ChatPageClientProps) {
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-3 overflow-y-auto px-3 py-4">
         {messages.length === 0 && (
           <p className="mx-auto max-w-md rounded-2xl bg-white/5 px-4 py-3 text-center text-sm text-slate-400 ring-1 ring-white/10">
-            打个招呼吧。他会根据你的语气，用文字或画面回应你。
+            打个招呼吧。他会根据你的语气，用文字、语音或画面回应你。
           </p>
         )}
 
@@ -182,6 +184,12 @@ export function ChatPageClient({ characterId: rawId }: ChatPageClientProps) {
                   </p>
                 )}
                 {m.image_url && <ImageCard src={m.image_url} alt="分享的图片" />}
+                {(() => {
+                  const rt = m.reply_type ?? "text";
+                  const vt = (m.voice_text?.trim() || (rt === "voice" ? m.content : "")) || "";
+                  if (!vt || (rt !== "voice" && rt !== "text+voice")) return null;
+                  return <VoiceBar characterId={characterId} voiceText={vt} />;
+                })()}
               </div>
             </div>
           )
@@ -233,7 +241,7 @@ export function ChatPageClient({ characterId: rawId }: ChatPageClientProps) {
           </button>
         </div>
         <p className="mx-auto mt-2 max-w-3xl text-center text-[10px] text-slate-500">
-          记录仅保存在本机浏览器，不会上传你的本地存储历史。
+          记录仅保存在本机浏览器，不会上传你的本地存储历史。语音播放按需加载，不影响首条文字返回。
         </p>
       </footer>
     </div>

@@ -2,16 +2,18 @@
   "name": "web",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 127.0.0.1 --port 3000",
     "build": "next build",
-    "start": "next start"
+    "start": "next start --hostname 127.0.0.1 --port 3000"
   },
   "dependencies": {
+    "@types/ws": "^8.18.1",
     "@vb/shared": "file:../shared",
     "idb": "^8.0.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

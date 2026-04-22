@@ -21,8 +21,8 @@ export default function HomePage() {
             选一个让你心安的人，慢慢聊。无付费墙、无好感度，只有对话本身。
           </p>
           <p className="mx-auto mt-3 max-w-xl rounded-2xl bg-amber-500/10 px-4 py-2 text-xs text-amber-100/90 ring-1 ring-amber-400/20">
-            对话：配置根目录 .env.local 中 ARK_API_KEY 后走火山方舟。USE_ARK_CHAT=false 可关闭线上模型，
-            回退本地占位回复。
+            对话：配置根目录 .env.local 中 ARK_API_KEY 后走火山方舟。语音：配置 XFYUN_APP_ID / XFYUN_API_KEY /
+            XFYUN_API_SECRET 后可播放角色语音。USE_ARK_CHAT=false 或 USE_XFYUN_TTS=false 可分别关闭对应能力。
           </p>
         </header>
 

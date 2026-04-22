@@ -10,6 +10,7 @@ export interface StoredChatMessage {
   createdAt: number;
   content: string;
   reply_type?: ReplyType;
+  voice_text?: string;
   image_ref?: string;
   image_url?: string;
   safety_note?: string;
