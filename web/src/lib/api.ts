@@ -5,7 +5,6 @@ export interface ChatApiReply {
   reply: {
     reply_type: string;
     content: string;
-    voice_text?: string;
     image_ref?: string;
     safety_note?: string;
     resolved_image_url?: string;
@@ -44,22 +43,6 @@ export async function postChat(params: {
   return (await res.json()) as ChatApiReply;
 }
 
-/**
- * 合成语音（MP3）
- */
-export async function postTts(characterId: CharacterId, text: string): Promise<Blob> {
-  const res = await fetch("/api/tts", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ characterId, text }),
-  });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? `TTS 失败 ${res.status}`);
-  }
-  return res.blob();
-}
-
 export interface CharacterPublic {
   id: CharacterId;
   name: string;
@@ -70,8 +53,6 @@ export interface CharacterPublic {
   avatarUrl: string;
   accentFrom: string;
   accentTo: string;
-  ttsVoice: string;
-  xfyunSuperTtsVcn: string;
 }
 
 /**

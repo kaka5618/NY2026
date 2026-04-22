@@ -66,9 +66,7 @@ interface ChatBody {
   messages: { role: "user" | "assistant" | "system"; content: string }[];
   userMessage: string;
   stats?: {
-    sinceLastAssistantVoice: number;
     sinceLastAssistantImage: number;
-    consecutiveAssistantVoice: number;
     totalAssistantMessages: number;
     isFirstAssistantInThread: boolean;
   };
@@ -99,9 +97,7 @@ app.post("/api/chat", async (req, res) => {
       stats != null
         ? [
             "【当前会话多模态统计（仅供你决策 reply_type，勿原样复述）】",
-            `自上次你的语音消息以来，你的回复条数：${stats.sinceLastAssistantVoice}`,
             `自上次你的图片消息以来，你的回复条数：${stats.sinceLastAssistantImage}`,
-            `你当前连续语音条数：${stats.consecutiveAssistantVoice}（硬性≤2）`,
             `你在本会话中累计回复条数：${stats.totalAssistantMessages}`,
             `是否为本线程第一条你的回复：${stats.isFirstAssistantInThread ? "是（可酌情用 portrait 立绘）" : "否"}`,
           ].join("\n")
@@ -148,39 +144,6 @@ app.post("/api/chat", async (req, res) => {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "服务器错误";
-    console.error(e);
-    res.status(500).json({ error: msg });
-  }
-});
-
-interface TtsBody {
-  characterId: CharacterId;
-  text: string;
-}
-
-app.post("/api/tts", async (req, res) => {
-  try {
-    const { characterId, text } = req.body as TtsBody;
-    if (!characterId || !CHARACTERS[characterId]) {
-      res.status(400).json({ error: "无效角色" });
-      return;
-    }
-    const t = String(text ?? "").trim();
-    if (!t) {
-      res.status(400).json({ error: "文本为空" });
-      return;
-    }
-    const openai = getClient();
-    const mp3 = await openai.audio.speech.create({
-      model: "tts-1",
-      voice: CHARACTERS[characterId].ttsVoice,
-      input: t.slice(0, 1200),
-    });
-    const buf = Buffer.from(await mp3.arrayBuffer());
-    res.setHeader("Content-Type", "audio/mpeg");
-    res.send(buf);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "TTS 失败";
     console.error(e);
     res.status(500).json({ error: msg });
   }

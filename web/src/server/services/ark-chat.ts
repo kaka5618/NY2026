@@ -77,9 +77,7 @@ function buildStatsHint(stats: SessionModalityStats | undefined): string {
   if (stats == null) return "";
   return [
     "【当前会话多模态统计（仅供你决策 reply_type，勿原样复述）】",
-    `自上次你的语音消息以来，你的回复条数：${stats.sinceLastAssistantVoice}`,
     `自上次你的图片消息以来，你的回复条数：${stats.sinceLastAssistantImage}`,
-    `你当前连续语音条数：${stats.consecutiveAssistantVoice}（硬性≤2）`,
     `你在本会话中累计回复条数：${stats.totalAssistantMessages}`,
     `是否为本线程第一条你的回复：${stats.isFirstAssistantInThread ? "是（可酌情用 portrait 立绘）" : "否"}`,
   ].join("\n");

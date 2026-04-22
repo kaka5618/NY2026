@@ -18,11 +18,11 @@ export default function HomePage() {
             虚拟男友 · 陪伴聊天
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-slate-400">
-            选一个让你心安的声音，慢慢聊。无付费墙、无好感度，只有对话本身。
+            选一个让你心安的人，慢慢聊。无付费墙、无好感度，只有对话本身。
           </p>
           <p className="mx-auto mt-3 max-w-xl rounded-2xl bg-amber-500/10 px-4 py-2 text-xs text-amber-100/90 ring-1 ring-amber-400/20">
-            对话：配置根目录 .env.local 中 ARK_API_KEY 后走火山方舟；语音：配置 XFYUN_* 后走讯飞超拟人
-            MP3。USE_ARK_CHAT=false / USE_XFYUN_TTS=false 可分别关闭对应能力。
+            对话：配置根目录 .env.local 中 ARK_API_KEY 后走火山方舟。USE_ARK_CHAT=false 可关闭线上模型，
+            回退本地占位回复。
           </p>
         </header>
 
