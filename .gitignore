@@ -1,0 +1,18 @@
+# 依赖与构建（体积大）
+node_modules/
+dist/
+web/dist/
+web/.next/
+
+# 本地环境（勿提交）
+.env
+.env.local
+.env.example
+
+
+# 编辑器 / 工具缓存
+.cursor/
+
+# 其他
+*.log
+.DS_Store

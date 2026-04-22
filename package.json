@@ -1,0 +1,13 @@
+{
+  "name": "virtual-boyfriend-companion",
+  "private": true,
+  "workspaces": [
+    "web",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w web",
+    "build": "npm run build -w web",
+    "start": "npm run start -w web"
+  }
+}
