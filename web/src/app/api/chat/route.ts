@@ -5,6 +5,9 @@ import {
   type SessionModalityStats,
 } from "@vb/shared";
 import { ArkChatError, completeCharacterChat } from "@/server/services/ark-chat";
+import { ArkImageError, generateArkImage } from "@/server/services/ark-image";
+import { buildCharacterImagePrompt } from "@/server/services/image-prompt";
+import { persistGeneratedImage } from "@/server/services/media-storage";
 import { buildPlaceholderReply } from "@/server/services/placeholder-reply";
 
 interface ChatBody {
@@ -23,6 +26,21 @@ function shouldUseArk(): boolean {
 
 function hasArkApiKey(): boolean {
   return Boolean(process.env.ARK_API_KEY?.trim());
+}
+
+/**
+ * 图片类型判断：仅 image / text+image 触发生图
+ */
+function hasImageReply(replyType: string | undefined): boolean {
+  const rt = replyType ?? "text";
+  return rt === "image" || rt === "text+image";
+}
+
+/**
+ * 判断是否显式关闭方舟生图能力
+ */
+function shouldUseArkImage(): boolean {
+  return process.env.USE_ARK_IMAGE !== "false";
 }
 
 /**
@@ -66,8 +84,56 @@ export async function POST(req: Request) {
       stats: body.stats,
     });
 
+    let reply = result.reply;
+    if (
+      shouldUseArkImage() &&
+      hasArkApiKey() &&
+      hasImageReply(reply.reply_type) &&
+      reply.image_ref
+    ) {
+      try {
+        const prompt = buildCharacterImagePrompt({
+          characterId,
+          imageRef: reply.image_ref,
+          userMessage,
+          assistantContent: reply.content,
+        });
+        const imageResult = await generateArkImage({
+          prompt,
+          response_format: "url",
+          size: "2K",
+          stream: false,
+          watermark: true,
+          sequential_image_generation: "disabled",
+        });
+        const generatedUrl = imageResult.data?.[0]?.url;
+        const imageRef = reply.image_ref;
+        if (generatedUrl && imageRef) {
+          reply = { ...reply, resolved_image_url: generatedUrl };
+          void persistGeneratedImage({
+            characterId,
+            imageRef,
+            sourceUrl: generatedUrl,
+            prompt,
+          }).catch((persistErr) => {
+            if (process.env.NODE_ENV === "development") {
+              console.error("[chat-route] image_persist_failed", persistErr);
+            }
+          });
+        }
+      } catch (e) {
+        if (process.env.NODE_ENV === "development") {
+          if (e instanceof ArkImageError) {
+            console.error("[chat-route] ArkImageError", e.code, e.message);
+          } else {
+            console.error("[chat-route] image_generation_failed", e);
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
-      reply: result.reply,
+      reply,
       characterId,
       model: result.model,
       usage: result.usage,

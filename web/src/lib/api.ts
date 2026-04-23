@@ -32,16 +32,30 @@ export async function postChat(params: {
     })),
   };
 
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? `请求失败 ${res.status}`);
+  const timeoutMs = 45_000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(err.error ?? `请求失败 ${res.status}`);
+    }
+    return (await res.json()) as ChatApiReply;
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("请求超时，请重试");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  return (await res.json()) as ChatApiReply;
 }
 
 /**
@@ -81,4 +95,47 @@ export async function fetchCharacters(): Promise<CharacterPublic[]> {
   if (!res.ok) throw new Error("无法加载角色列表");
   const data = (await res.json()) as { characters: CharacterPublic[] };
   return data.characters;
+}
+
+export interface ImageGenerationRequest {
+  model?: string;
+  prompt: string;
+  sequential_image_generation?: "disabled" | "enabled";
+  response_format?: "url" | "b64_json";
+  size?: string;
+  stream?: boolean;
+  watermark?: boolean;
+}
+
+export interface ImageGenerationResponse {
+  model?: string;
+  created?: number;
+  data?: Array<{
+    url?: string;
+    b64_json?: string;
+    size?: string;
+  }>;
+  usage?: {
+    generated_images?: number;
+    output_tokens?: number;
+    total_tokens?: number;
+  };
+}
+
+/**
+ * 请求服务端生成图片（服务端代理方舟，避免前端暴露密钥）
+ */
+export async function postGenerateImage(
+  params: ImageGenerationRequest
+): Promise<ImageGenerationResponse> {
+  const res = await fetch("/api/image/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(err.error ?? `图片生成失败 ${res.status}`);
+  }
+  return (await res.json()) as ImageGenerationResponse;
 }

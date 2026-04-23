@@ -79,11 +79,10 @@ export function ChatPageClient({ characterId: rawId }: ChatPageClientProps) {
     setInput("");
     setError(null);
     setSending(true);
-    await persist(draft);
-
-    const stats = computeModalityStats(draft, true);
 
     try {
+      await persist(draft);
+      const stats = computeModalityStats(draft, true);
       const res = await postChat({
         characterId,
         messages: draft,

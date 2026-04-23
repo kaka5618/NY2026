@@ -4,6 +4,7 @@ import {
   synthesizeXfyunOnlineTtsMp3,
   XfyunOnlineTtsError,
 } from "@/server/services/xfyun-online-tts";
+import { persistGeneratedVoice } from "@/server/services/media-storage";
 
 export const runtime = "nodejs";
 
@@ -57,6 +58,16 @@ export async function POST(req: Request) {
     const mp3 = await synthesizeXfyunOnlineTtsMp3({
       characterId,
       text: t,
+    });
+    void persistGeneratedVoice({
+      characterId,
+      text: t,
+      audio: mp3,
+      mimeType: "audio/mpeg",
+    }).catch((persistErr) => {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[tts-route] voice_persist_failed", persistErr);
+      }
     });
     return new NextResponse(new Uint8Array(mp3), {
       status: 200,
