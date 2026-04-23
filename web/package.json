@@ -9,7 +9,9 @@
   "dependencies": {
     "@types/ws": "^8.18.1",
     "@vb/shared": "file:../shared",
+    "framer-motion": "^12.38.0",
     "idb": "^8.0.0",
+    "lucide-react": "^1.8.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
