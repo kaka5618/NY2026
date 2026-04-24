@@ -1,3 +1,4 @@
+import { HomeAuthStrip } from "@/components/HomeAuthStrip";
 import { homePageContent } from "./content";
 import DemoOne from "./demo";
 
@@ -6,8 +7,14 @@ import DemoOne from "./demo";
  */
 export function HomePageView() {
   return (
-    <div className="min-h-full bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-10 md:py-12">
+    <div className="relative min-h-full bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      <div className="pointer-events-none absolute right-0 top-0 z-30 p-3 md:p-5">
+        <div className="pointer-events-auto">
+          <HomeAuthStrip />
+        </div>
+      </div>
+
+      <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 pb-10 pt-4 md:pb-12 md:pt-6">
         <header className="mx-auto max-w-lg text-center font-home">
           <p className="text-xs font-normal tracking-[0.22em] text-rose-200/80">
             {homePageContent.brand}
@@ -31,7 +38,7 @@ export function HomePageView() {
         </div>
 
         <footer className="text-center text-xs font-light text-slate-500">
-          {homePageContent.footer}
+          <p>{homePageContent.footer}</p>
         </footer>
       </div>
     </div>

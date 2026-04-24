@@ -3,6 +3,8 @@ node_modules/
 dist/
 web/dist/
 web/.next/
+web/data/*.db
+data/*.db
 
 # 本地环境（勿提交）
 .env
