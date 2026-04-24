@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { createUser } from "@/server/db/users-repo";
 import { parseRegisterBody } from "@/server/auth/validate";
 import { SESSION_COOKIE, sessionCookieOptions, signSessionToken } from "@/server/auth/session";
+import { verifyTurnstileResponse } from "@/server/auth/turnstile";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,23 @@ export async function POST(req: Request): Promise<Response> {
   const parsed = parseRegisterBody(json);
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  const raw = json as Record<string, unknown>;
+  const turnstileToken = typeof raw.turnstileToken === "string" ? raw.turnstileToken.trim() : "";
+  const turnstileRequired = Boolean(process.env.TURNSTILE_SECRET_KEY?.trim());
+  if (turnstileRequired) {
+    if (!turnstileToken) {
+      return NextResponse.json({ error: "请先完成人机验证" }, { status: 400 });
+    }
+    const forwarded = req.headers.get("x-forwarded-for");
+    const remoteip =
+      req.headers.get("cf-connecting-ip")?.trim() ||
+      (forwarded ? forwarded.split(",")[0]?.trim() : undefined);
+    const turnstileOk = await verifyTurnstileResponse(turnstileToken, remoteip);
+    if (!turnstileOk) {
+      return NextResponse.json({ error: "人机验证未通过，请重试" }, { status: 400 });
+    }
   }
 
   const { username, password, email, nickname } = parsed.data;

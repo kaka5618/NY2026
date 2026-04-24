@@ -13,6 +13,7 @@ export const registerPageContent = {
   emailLabel: "邮箱",
   nicknameLabel: "昵称",
   nicknameHint: "1–32 个字符，将用于问候语",
+  turnstileLabel: "人机验证",
   submitCta: "创建账号",
   submittingCta: "提交中…",
   loginHint: "已有账号？去登录",

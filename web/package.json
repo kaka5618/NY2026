@@ -7,6 +7,7 @@
     "start": "next start --hostname 127.0.0.1 --port 3000"
   },
   "dependencies": {
+    "@marsidev/react-turnstile": "^1.5.0",
     "@types/ws": "^8.18.1",
     "@vb/shared": "file:../shared",
     "bcryptjs": "^3.0.3",
