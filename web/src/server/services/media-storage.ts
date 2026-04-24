@@ -1,6 +1,7 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { randomBytes } from "node:crypto";
 import type { CharacterId } from "@vb/shared";
+import { insertGeneratedImage } from "@/server/db/generated-images-repo";
 
 /**
  * 媒体存储提供方类型。
@@ -188,6 +189,15 @@ export async function persistGeneratedImage(params: PersistImageParams): Promise
       ct.includes("jpeg") || ct.includes("jpg") ? "jpg" : ct.includes("webp") ? "webp" : ct.includes("png") ? "png" : "bin";
     const finalKey = key.replace(/\.bin$/i, `.${ext}`);
     const { url } = await putR2Object({ key: finalKey, body: buf, contentType: ct });
+    await insertGeneratedImage({
+      userId: params.userId,
+      characterId: params.characterId,
+      imageRef: params.imageRef,
+      prompt: params.prompt,
+      sourceUrl: params.sourceUrl,
+      r2Key: finalKey,
+      imageUrl: url,
+    });
     devLog("image_ok", { key: finalKey, bytes: buf.length });
     return { provider, key: finalKey, url };
   } catch (e) {

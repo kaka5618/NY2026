@@ -2,7 +2,12 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { findUserByLoginKey } from "@/server/db/users-repo";
 import { parseLoginBody } from "@/server/auth/validate";
-import { SESSION_COOKIE, sessionCookieOptions, signSessionToken } from "@/server/auth/session";
+import {
+  SESSION_COOKIE,
+  assertSigningKeyReady,
+  sessionCookieOptions,
+  signSessionToken,
+} from "@/server/auth/session";
 
 export const runtime = "nodejs";
 
@@ -20,6 +25,16 @@ export async function POST(req: Request): Promise<Response> {
   const parsed = parseLoginBody(json);
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  try {
+    assertSigningKeyReady();
+  } catch {
+    console.error("[auth/login] AUTH_SECRET 不可用");
+    return NextResponse.json(
+      { error: "服务器未正确配置会话密钥（AUTH_SECRET），暂无法登录，请联系管理员" },
+      { status: 503 }
+    );
   }
 
   try {

@@ -14,6 +14,14 @@ export interface SessionPayload {
 let warnedInsecure = false;
 
 /**
+ * 在「创建用户」或登录校验之前调用，与 `signSessionToken` 使用同一套密钥规则。
+ * 避免先 `INSERT users` 成功再因无法签发 JWT 而返回 500，造成「注册失败但账号已占用」。
+ */
+export function assertSigningKeyReady(): void {
+  getSecretKey();
+}
+
+/**
  * 读取签名密钥；生产环境必须配置 `AUTH_SECRET`。
  */
 function getSecretKey(): Uint8Array {

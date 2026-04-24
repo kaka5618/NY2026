@@ -74,25 +74,23 @@ export async function POST(req: Request) {
     const cid = body.characterId;
     if (arkUrl && cid && CHARACTERS[cid]) {
       const sessionUserId = await getOptionalSessionUserId();
-      try {
-        const persisted = await persistGeneratedImage({
-          characterId: cid,
-          imageRef: String(body.imageRef ?? "generated"),
-          sourceUrl: arkUrl,
-          prompt,
-          userId: sessionUserId ?? undefined,
-        });
-        if (persisted?.url && result.data?.[0]) {
-          result = {
-            ...result,
-            data: [{ ...result.data[0], url: persisted.url }],
-          };
-        }
-      } catch (persistErr) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("[image-generate-route] r2_persist_failed", persistErr);
-        }
+      const persisted = await persistGeneratedImage({
+        characterId: cid,
+        imageRef: String(body.imageRef ?? "generated"),
+        sourceUrl: arkUrl,
+        prompt,
+        userId: sessionUserId ?? undefined,
+      });
+      if (!persisted?.url || !result.data?.[0]) {
+        return NextResponse.json(
+          { error: "图片持久化失败，请稍后重试" },
+          { status: 502 }
+        );
       }
+      result = {
+        ...result,
+        data: [{ ...result.data[0], url: persisted.url }],
+      };
     }
 
     return NextResponse.json(result);

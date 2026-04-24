@@ -3,7 +3,12 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { createUser } from "@/server/db/users-repo";
 import { parseRegisterBody } from "@/server/auth/validate";
-import { SESSION_COOKIE, sessionCookieOptions, signSessionToken } from "@/server/auth/session";
+import {
+  SESSION_COOKIE,
+  assertSigningKeyReady,
+  sessionCookieOptions,
+  signSessionToken,
+} from "@/server/auth/session";
 import { verifyTurnstileResponse } from "@/server/auth/turnstile";
 
 export const runtime = "nodejs";
@@ -41,6 +46,19 @@ export async function POST(req: Request): Promise<Response> {
     }
   }
 
+  try {
+    assertSigningKeyReady();
+  } catch {
+    console.error("[auth/register] AUTH_SECRET 不可用，已阻止写入用户前失败（请检查生产环境 AUTH_SECRET）");
+    return NextResponse.json(
+      {
+        error:
+          "服务器未正确配置会话密钥（AUTH_SECRET），无法完成注册。若多次尝试后仍提示用户名已存在，请联系管理员删除误注册账号或补全配置后重试。",
+      },
+      { status: 503 }
+    );
+  }
+
   const { username, password, email, nickname } = parsed.data;
   const passwordHash = bcrypt.hashSync(password, 12);
 
@@ -63,6 +81,12 @@ export async function POST(req: Request): Promise<Response> {
     }
     if (e instanceof Error && e.message.includes("DATABASE_URL")) {
       return NextResponse.json({ error: "服务器未配置数据库，请联系管理员" }, { status: 503 });
+    }
+    if (e instanceof Error && e.message.includes("AUTH_SECRET")) {
+      return NextResponse.json(
+        { error: "服务器会话密钥异常，请联系管理员检查 AUTH_SECRET 配置" },
+        { status: 503 }
+      );
     }
     console.error("[auth/register]", e);
     return NextResponse.json({ error: "注册失败，请稍后重试" }, { status: 500 });
