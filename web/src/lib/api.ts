@@ -60,9 +60,12 @@ export async function postChat(params: {
 }
 
 /**
- * 请求服务端合成语音并返回音频 Blob。
+ * 请求服务端合成语音；若已配置 R2，响应头可能含 `X-Voice-Public-Url`。
  */
-export async function postTts(characterId: CharacterId, text: string): Promise<Blob> {
+export async function postTts(
+  characterId: CharacterId,
+  text: string
+): Promise<{ blob: Blob; publicUrl?: string }> {
   const res = await fetch("/api/tts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -72,7 +75,9 @@ export async function postTts(characterId: CharacterId, text: string): Promise<B
     const err = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(err.error ?? `TTS 失败 ${res.status}`);
   }
-  return res.blob();
+  const publicUrl = res.headers.get("X-Voice-Public-Url")?.trim() || undefined;
+  const blob = await res.blob();
+  return { blob, publicUrl };
 }
 
 export interface CharacterPublic {
@@ -106,6 +111,9 @@ export interface ImageGenerationRequest {
   size?: string;
   stream?: boolean;
   watermark?: boolean;
+  /** 传入以便服务端归档到 R2 按角色分目录 */
+  characterId?: CharacterId;
+  imageRef?: string;
 }
 
 export interface ImageGenerationResponse {

@@ -7,12 +7,16 @@ import { postTts } from "@/lib/api";
 interface VoiceBarProps {
   characterId: CharacterId;
   voiceText: string;
+  /** 已上传云存储的可直连 URL（历史记录回放） */
+  voiceUrl?: string | null;
+  /** 首次 TTS 拿到公开 URL 时回写，便于写入消息与同步数据库 */
+  onPublicUrl?: (url: string) => void;
 }
 
 /**
- * 语音条组件，首次播放时向服务端请求 TTS 音频并缓存 URL。
+ * 语音条：优先播放已持久化 URL；否则按需请求 TTS 并缓存 Blob。
  */
-export function VoiceBar({ characterId, voiceText }: VoiceBarProps) {
+export function VoiceBar({ characterId, voiceText, voiceUrl, onPublicUrl }: VoiceBarProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,14 +24,26 @@ export function VoiceBar({ characterId, voiceText }: VoiceBarProps) {
   const [duration, setDuration] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
 
+  const remote = voiceUrl?.trim() || "";
+
+  useEffect(() => {
+    if (!remote || !blobUrl) return;
+    URL.revokeObjectURL(blobUrl);
+    setBlobUrl(null);
+  }, [remote, blobUrl]);
+
   const ensureAudio = useCallback(async () => {
+    if (remote) return remote;
     if (blobUrl) return blobUrl;
     setLoading(true);
     setErr(null);
     try {
-      const blob = await postTts(characterId, voiceText);
+      const { blob, publicUrl } = await postTts(characterId, voiceText);
       const url = URL.createObjectURL(blob);
       setBlobUrl(url);
+      if (publicUrl) {
+        onPublicUrl?.(publicUrl);
+      }
       return url;
     } catch (e) {
       setErr(e instanceof Error ? e.message : "语音加载失败");
@@ -35,7 +51,7 @@ export function VoiceBar({ characterId, voiceText }: VoiceBarProps) {
     } finally {
       setLoading(false);
     }
-  }, [blobUrl, characterId, voiceText]);
+  }, [blobUrl, characterId, onPublicUrl, remote, voiceText]);
 
   useEffect(() => {
     return () => {
@@ -45,7 +61,8 @@ export function VoiceBar({ characterId, voiceText }: VoiceBarProps) {
 
   useEffect(() => {
     const a = audioRef.current;
-    if (!a || !blobUrl) return;
+    const src = remote || blobUrl;
+    if (!a || !src) return;
     const onMeta = () => setDuration(a.duration || null);
     const onEnded = () => setPlaying(false);
     const onPause = () => setPlaying(false);
@@ -60,10 +77,10 @@ export function VoiceBar({ characterId, voiceText }: VoiceBarProps) {
       a.removeEventListener("pause", onPause);
       a.removeEventListener("play", onPlay);
     };
-  }, [blobUrl]);
+  }, [blobUrl, remote]);
 
   const toggle = async () => {
-    const url = blobUrl ?? (await ensureAudio());
+    const url = remote || blobUrl || (await ensureAudio());
     if (!url) return;
     const a = audioRef.current;
     if (!a) return;

@@ -42,23 +42,74 @@ export function ChatPageClient({ characterId: rawId }: ChatPageClientProps) {
 
   const [meta, setMeta] = useState<CharacterPublic | null>(null);
   const [messages, setMessages] = useState<StoredChatMessage[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
+  const syncRemote = useCallback(async (next: StoredChatMessage[]) => {
+    if (!characterId) return;
+    try {
+      const meRes = await fetch("/api/auth/me", { credentials: "same-origin" });
+      const me = (await meRes.json()) as { user?: { id: string } | null };
+      if (!me.user) return;
+      await fetch("/api/chat/history", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ characterId, messages: next }),
+      });
+    } catch {
+      /* 同步失败时本地 IndexedDB 仍有数据 */
+    }
+  }, [characterId]);
+
   useEffect(() => {
     if (!characterId) return;
     let cancelled = false;
     (async () => {
-      const [chars, stored] = await Promise.all([
+      const [chars, mePayload] = await Promise.all([
         fetchCharacters().catch(() => [] as CharacterPublic[]),
-        loadSession(characterId),
+        fetch("/api/auth/me", { credentials: "same-origin" }).then((r) => r.json()),
       ]);
       if (cancelled) return;
+      const me = mePayload as { user?: { id: string } | null };
+      const loggedIn = Boolean(me.user);
+      setIsLoggedIn(loggedIn);
+
       const m = chars.find((c) => c.id === characterId) ?? null;
       setMeta(m);
+
+      let stored: StoredChatMessage[] = [];
+      if (loggedIn) {
+        const h = await fetch(
+          `/api/chat/history?characterId=${encodeURIComponent(characterId)}`,
+          { credentials: "same-origin" }
+        );
+        if (h.ok) {
+          const j = (await h.json()) as { messages?: StoredChatMessage[] };
+          const remote = j.messages ?? [];
+          if (remote.length > 0) {
+            stored = remote;
+          } else {
+            const local = await loadSession(characterId);
+            if (local.length > 0) {
+              await fetch("/api/chat/history", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ characterId, messages: local }),
+              });
+              stored = local;
+            }
+          }
+        }
+      } else {
+        stored = await loadSession(characterId);
+      }
       setMessages(stored);
+      await saveSession(characterId, stored);
     })();
     return () => {
       cancelled = true;
@@ -74,8 +125,22 @@ export function ChatPageClient({ characterId: rawId }: ChatPageClientProps) {
       if (!characterId) return;
       setMessages(next);
       await saveSession(characterId, next);
+      void syncRemote(next);
     },
-    [characterId]
+    [characterId, syncRemote]
+  );
+
+  const onVoiceUrlCached = useCallback(
+    (messageId: string, url: string) => {
+      if (!characterId) return;
+      setMessages((prev) => {
+        const next = prev.map((x) => (x.id === messageId ? { ...x, voice_url: url } : x));
+        void saveSession(characterId, next);
+        void syncRemote(next);
+        return next;
+      });
+    },
+    [characterId, syncRemote]
   );
 
   const onSend = async () => {
@@ -133,6 +198,8 @@ export function ChatPageClient({ characterId: rawId }: ChatPageClientProps) {
               stream: false,
               watermark: true,
               sequential_image_generation: "disabled",
+              characterId,
+              imageRef: r.image_ref,
             });
             const generatedUrl = generated.data?.[0]?.url;
             if (generatedUrl) {
@@ -147,6 +214,7 @@ export function ChatPageClient({ characterId: rawId }: ChatPageClientProps) {
                     : m
                 );
                 void saveSession(characterId, next);
+                void syncRemote(next);
                 return next;
               });
             }
@@ -200,6 +268,8 @@ export function ChatPageClient({ characterId: rawId }: ChatPageClientProps) {
       bottomRef={bottomRef}
       onInputChange={setInput}
       onSend={() => void onSend()}
+      isLoggedIn={isLoggedIn}
+      onVoiceUrlCached={onVoiceUrlCached}
     />
   );
 }

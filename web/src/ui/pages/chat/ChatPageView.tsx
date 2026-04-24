@@ -20,6 +20,10 @@ interface ChatPageViewProps {
   bottomRef: React.RefObject<HTMLDivElement | null>;
   onInputChange: (value: string) => void;
   onSend: () => void;
+  /** 已登录时展示云端同步说明 */
+  isLoggedIn: boolean;
+  /** TTS 返回公开 URL 后写入对应助手消息 */
+  onVoiceUrlCached?: (messageId: string, url: string) => void;
 }
 
 /**
@@ -38,6 +42,8 @@ export function ChatPageView({
   bottomRef,
   onInputChange,
   onSend,
+  isLoggedIn,
+  onVoiceUrlCached,
 }: ChatPageViewProps) {
   return (
     <div className="flex min-h-full flex-col bg-[#ededed]">
@@ -90,7 +96,14 @@ export function ChatPageView({
                   const rt = m.reply_type ?? "text";
                   const vt = (m.voice_text?.trim() || (rt === "voice" ? m.content : "")) || "";
                   if (!vt || (rt !== "voice" && rt !== "text+voice")) return null;
-                  return <VoiceBar characterId={characterId} voiceText={vt} />;
+                  return (
+                    <VoiceBar
+                      characterId={characterId}
+                      voiceText={vt}
+                      voiceUrl={m.voice_url}
+                      onPublicUrl={(url) => onVoiceUrlCached?.(m.id, url)}
+                    />
+                  );
                 })()}
               </div>
             </div>
@@ -148,7 +161,9 @@ export function ChatPageView({
           </button>
         </div>
         <p className="mx-auto mt-1 max-w-3xl text-center text-[10px] text-[#999]">
-          记录仅保存在本机浏览器，不会上传你的本地存储历史。语音播放按需加载，不影响首条文字返回。
+          {isLoggedIn
+            ? "已登录：文字记录会同步到账号；语音与图片在开启云存储时会归档到云端。未登录时记录仍仅保存在本机。"
+            : "未登录：记录仅保存在本机浏览器。登录后可跨设备同步文字历史，语音与图片可归档到云存储。"}
         </p>
       </footer>
     </div>

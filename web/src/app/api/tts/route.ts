@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { CHARACTERS, type CharacterId } from "@vb/shared";
+import { getOptionalSessionUserId } from "@/server/auth/session-user";
 import {
   synthesizeXfyunOnlineTtsMp3,
   XfyunOnlineTtsError,
@@ -59,23 +60,33 @@ export async function POST(req: Request) {
       characterId,
       text: t,
     });
-    void persistGeneratedVoice({
-      characterId,
-      text: t,
-      audio: mp3,
-      mimeType: "audio/mpeg",
-    }).catch((persistErr) => {
+    const sessionUserId = await getOptionalSessionUserId();
+    let voicePublicUrl: string | undefined;
+    try {
+      const persisted = await persistGeneratedVoice({
+        characterId,
+        text: t,
+        audio: mp3,
+        mimeType: "audio/mpeg",
+        userId: sessionUserId ?? undefined,
+      });
+      voicePublicUrl = persisted?.url;
+    } catch (persistErr) {
       if (process.env.NODE_ENV === "development") {
         console.error("[tts-route] voice_persist_failed", persistErr);
       }
-    });
+    }
+    const headers: Record<string, string> = {
+      "Content-Type": "audio/mpeg",
+      "X-TTS-Mode": "xfyun-online",
+      "Cache-Control": "no-store",
+    };
+    if (voicePublicUrl) {
+      headers["X-Voice-Public-Url"] = voicePublicUrl;
+    }
     return new NextResponse(new Uint8Array(mp3), {
       status: 200,
-      headers: {
-        "Content-Type": "audio/mpeg",
-        "X-TTS-Mode": "xfyun-online",
-        "Cache-Control": "no-store",
-      },
+      headers,
     });
   } catch (e) {
     if (e instanceof XfyunOnlineTtsError) {

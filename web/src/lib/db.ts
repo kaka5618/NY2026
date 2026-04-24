@@ -1,20 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { ReplyType } from "@vb/shared";
+import type { StoredChatMessage } from "@/types/stored-chat";
 
-/**
- * 持久化单条聊天消息
- */
-export interface StoredChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  createdAt: number;
-  content: string;
-  reply_type?: ReplyType;
-  voice_text?: string;
-  image_ref?: string;
-  image_url?: string;
-  safety_note?: string;
-}
+export type { StoredChatMessage };
 
 interface VBSchema extends DBSchema {
   sessions: {
