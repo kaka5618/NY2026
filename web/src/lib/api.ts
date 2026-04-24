@@ -9,6 +9,7 @@ export interface ChatApiReply {
     image_ref?: string;
     safety_note?: string;
     resolved_image_url?: string;
+    image_generation_prompt?: string;
   };
   characterId: CharacterId;
 }

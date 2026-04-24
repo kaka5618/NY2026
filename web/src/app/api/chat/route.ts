@@ -5,9 +5,7 @@ import {
   type SessionModalityStats,
 } from "@vb/shared";
 import { ArkChatError, completeCharacterChat } from "@/server/services/ark-chat";
-import { ArkImageError, generateArkImage } from "@/server/services/ark-image";
 import { buildCharacterImagePrompt } from "@/server/services/image-prompt";
-import { persistGeneratedImage } from "@/server/services/media-storage";
 import { buildPlaceholderReply } from "@/server/services/placeholder-reply";
 
 interface ChatBody {
@@ -85,55 +83,26 @@ export async function POST(req: Request) {
     });
 
     let reply = result.reply;
+    let imageGenerationPrompt: string | undefined;
     if (
       shouldUseArkImage() &&
       hasArkApiKey() &&
       hasImageReply(reply.reply_type) &&
       reply.image_ref
     ) {
-      try {
-        const prompt = buildCharacterImagePrompt({
-          characterId,
-          imageRef: reply.image_ref,
-          userMessage,
-          assistantContent: reply.content,
-        });
-        const imageResult = await generateArkImage({
-          prompt,
-          response_format: "url",
-          size: "2K",
-          stream: false,
-          watermark: true,
-          sequential_image_generation: "disabled",
-        });
-        const generatedUrl = imageResult.data?.[0]?.url;
-        const imageRef = reply.image_ref;
-        if (generatedUrl && imageRef) {
-          reply = { ...reply, resolved_image_url: generatedUrl };
-          void persistGeneratedImage({
-            characterId,
-            imageRef,
-            sourceUrl: generatedUrl,
-            prompt,
-          }).catch((persistErr) => {
-            if (process.env.NODE_ENV === "development") {
-              console.error("[chat-route] image_persist_failed", persistErr);
-            }
-          });
-        }
-      } catch (e) {
-        if (process.env.NODE_ENV === "development") {
-          if (e instanceof ArkImageError) {
-            console.error("[chat-route] ArkImageError", e.code, e.message);
-          } else {
-            console.error("[chat-route] image_generation_failed", e);
-          }
-        }
-      }
+      imageGenerationPrompt = buildCharacterImagePrompt({
+        characterId,
+        imageRef: reply.image_ref,
+        userMessage,
+        assistantContent: reply.content,
+      });
     }
 
     return NextResponse.json({
-      reply,
+      reply: {
+        ...reply,
+        image_generation_prompt: imageGenerationPrompt,
+      },
       characterId,
       model: result.model,
       usage: result.usage,

@@ -3,13 +3,28 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CharacterId, ReplyType } from "@vb/shared";
-import { ImageCard } from "@/components/ImageCard";
-import { VoiceBar } from "@/components/VoiceBar";
-import { postChat, fetchCharacters, type CharacterPublic } from "@/lib/api";
+import {
+  postChat,
+  postGenerateImage,
+  fetchCharacters,
+  type CharacterPublic,
+} from "@/lib/api";
 import { loadSession, saveSession, type StoredChatMessage } from "@/lib/db";
 import { computeModalityStats } from "@/lib/stats";
+import { ChatPageView } from "@/ui/pages/chat/ChatPageView";
+import photoShenyu from "@/ui/pages/home/照片/iShot_2026-04-23_21.22.22.png";
+import photoLushiyan from "@/ui/pages/home/照片/iShot_2026-04-23_21.31.05.png";
+import photoJiangyubai from "@/ui/pages/home/照片/iShot_2026-04-23_21.33.07.png";
+import photoHuoyanchen from "@/ui/pages/home/照片/iShot_2026-04-23_21.35.55.png";
 
 const VALID_IDS: CharacterId[] = ["shenyu", "lushiyan", "jiangyubai", "huoyanchen"];
+
+const CHARACTER_AVATAR_MAP: Record<CharacterId, string> = {
+  shenyu: photoShenyu.src,
+  lushiyan: photoLushiyan.src,
+  jiangyubai: photoJiangyubai.src,
+  huoyanchen: photoHuoyanchen.src,
+};
 
 function isCharacterId(s: string | undefined): s is CharacterId {
   return !!s && (VALID_IDS as string[]).includes(s);
@@ -106,6 +121,42 @@ export function ChatPageClient({ characterId: rawId }: ChatPageClientProps) {
       };
 
       await persist([...draft, assistantMsg]);
+
+      const isImageReply = replyType === "image" || replyType === "text+image";
+      if (isImageReply && r.image_generation_prompt) {
+        void (async () => {
+          try {
+            const generated = await postGenerateImage({
+              prompt: r.image_generation_prompt!,
+              response_format: "url",
+              size: "2K",
+              stream: false,
+              watermark: true,
+              sequential_image_generation: "disabled",
+            });
+            const generatedUrl = generated.data?.[0]?.url;
+            if (generatedUrl) {
+              if (!characterId) return;
+              setMessages((prev) => {
+                const next = prev.map((m) =>
+                  m.id === assistantMsg.id
+                    ? {
+                        ...m,
+                        image_url: generatedUrl,
+                      }
+                    : m
+                );
+                void saveSession(characterId, next);
+                return next;
+              });
+            }
+          } catch {
+            /**
+             * 异步生图失败时保留占位图，不打断主聊天流程。
+             */
+          }
+        })();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "发送失败");
     } finally {
@@ -114,6 +165,11 @@ export function ChatPageClient({ characterId: rawId }: ChatPageClientProps) {
   };
 
   const title = meta?.name ?? "聊天";
+  const roleAvatarSrc = useMemo(() => {
+    if (!characterId) return "";
+    return CHARACTER_AVATAR_MAP[characterId];
+  }, [characterId]);
+
   const headerLine = useMemo(() => {
     if (!meta) return "";
     return `${meta.age} 岁 · ${meta.role}`;
@@ -131,118 +187,19 @@ export function ChatPageClient({ characterId: rawId }: ChatPageClientProps) {
   }
 
   return (
-    <div className="flex min-h-full flex-col bg-gradient-to-b from-slate-950 to-slate-900">
-      <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/85 px-4 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center gap-3">
-          <Link
-            href="/"
-            className="rounded-full px-2 py-1 text-sm text-slate-400 transition hover:text-white"
-          >
-            ← 切换
-          </Link>
-          {meta && (
-            <img
-              src={meta.avatarUrl}
-              alt=""
-              className="h-11 w-11 rounded-2xl object-cover ring-1 ring-white/15"
-            />
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h1 className="truncate text-base font-semibold text-white">{title}</h1>
-              <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
-                在线
-              </span>
-            </div>
-            <p className="truncate text-xs text-slate-400">{headerLine}</p>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-3 overflow-y-auto px-3 py-4">
-        {messages.length === 0 && (
-          <p className="mx-auto max-w-md rounded-2xl bg-white/5 px-4 py-3 text-center text-sm text-slate-400 ring-1 ring-white/10">
-            打个招呼吧。他会根据你的语气，用文字、语音或画面回应你。
-          </p>
-        )}
-
-        {messages.map((m) =>
-          m.role === "user" ? (
-            <div key={m.id} className="flex justify-end">
-              <div className="max-w-[85%] rounded-3xl rounded-br-md bg-rose-500/90 px-4 py-2.5 text-sm leading-relaxed text-white shadow-lg shadow-rose-900/20">
-                {m.content}
-              </div>
-            </div>
-          ) : (
-            <div key={m.id} className="flex justify-start">
-              <div className="max-w-[90%] rounded-3xl rounded-bl-md bg-slate-800/90 px-4 py-2.5 text-sm leading-relaxed text-slate-100 ring-1 ring-white/10">
-                <p className="whitespace-pre-wrap">{m.content}</p>
-                {m.safety_note && (
-                  <p className="mt-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs text-amber-100 ring-1 ring-amber-400/30">
-                    {m.safety_note}
-                  </p>
-                )}
-                {m.image_url && <ImageCard src={m.image_url} alt="分享的图片" />}
-                {(() => {
-                  const rt = m.reply_type ?? "text";
-                  const vt = (m.voice_text?.trim() || (rt === "voice" ? m.content : "")) || "";
-                  if (!vt || (rt !== "voice" && rt !== "text+voice")) return null;
-                  return <VoiceBar characterId={characterId} voiceText={vt} />;
-                })()}
-              </div>
-            </div>
-          )
-        )}
-
-        {sending && (
-          <div className="flex justify-start">
-            <div className="rounded-3xl bg-slate-800/60 px-4 py-3 text-sm text-slate-400 ring-1 ring-white/10">
-              <span className="inline-flex gap-1">
-                <span className="animate-bounce">·</span>
-                <span className="animate-bounce [animation-delay:120ms]">·</span>
-                <span className="animate-bounce [animation-delay:240ms]">·</span>
-              </span>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="rounded-2xl border border-rose-500/40 bg-rose-950/50 px-3 py-2 text-center text-sm text-rose-100">
-            {error}
-          </div>
-        )}
-
-        <div ref={bottomRef} />
-      </main>
-
-      <footer className="border-t border-white/10 bg-slate-950/90 px-3 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl gap-2">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void onSend();
-              }
-            }}
-            rows={1}
-            placeholder="想说的，慢慢打在这里…"
-            className="max-h-40 min-h-[48px] flex-1 resize-none rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white outline-none ring-0 placeholder:text-slate-500 focus:border-rose-400/50"
-          />
-          <button
-            type="button"
-            onClick={() => void onSend()}
-            disabled={sending || !input.trim()}
-            className="shrink-0 rounded-2xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-900/30 transition hover:bg-rose-400 disabled:opacity-40"
-          >
-            发送
-          </button>
-        </div>
-        <p className="mx-auto mt-2 max-w-3xl text-center text-[10px] text-slate-500">
-          记录仅保存在本机浏览器，不会上传你的本地存储历史。语音播放按需加载，不影响首条文字返回。
-        </p>
-      </footer>
-    </div>
+    <ChatPageView
+      characterId={characterId}
+      meta={meta}
+      title={title}
+      headerLine={headerLine}
+      roleAvatarSrc={roleAvatarSrc}
+      messages={messages}
+      sending={sending}
+      error={error}
+      input={input}
+      bottomRef={bottomRef}
+      onInputChange={setInput}
+      onSend={() => void onSend()}
+    />
   );
 }
