@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { loginPageContent } from "./content";
 
 /**
@@ -14,6 +14,15 @@ export function LoginPageView() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [oauthErrorText, setOauthErrorText] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get("error");
+    if (oauthError) {
+      setOauthErrorText("Google 登录失败，请重试或使用密码登录");
+    }
+  }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +83,9 @@ export function LoginPageView() {
             />
           </label>
 
-          {error ? <p className="text-center text-sm text-rose-300">{error}</p> : null}
+          {error ?? oauthErrorText ? (
+            <p className="text-center text-sm text-rose-300">{error ?? oauthErrorText}</p>
+          ) : null}
 
           <button
             type="submit"
@@ -84,6 +95,15 @@ export function LoginPageView() {
             {loading ? loginPageContent.submittingCta : loginPageContent.submitCta}
           </button>
         </form>
+
+        <div className="mt-4">
+          <a
+            href="/api/auth/google/start"
+            className="block w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-center text-sm font-medium text-white transition hover:bg-white/10"
+          >
+            使用 Google 登录
+          </a>
+        </div>
 
         <div className="mt-5 text-center">
           <Link href="/register" className="text-xs text-slate-400 transition hover:text-white">
