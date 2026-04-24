@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { findUserById } from "@/server/db/user-store";
+import { findUserById } from "@/server/db/users-repo";
 import { SESSION_COOKIE, verifySessionToken } from "@/server/auth/session";
 
 export const runtime = "nodejs";
@@ -18,16 +18,25 @@ export async function GET(): Promise<Response> {
   if (!payload) {
     return NextResponse.json({ user: null });
   }
-  const row = findUserById(payload.sub);
-  if (!row) {
+
+  try {
+    const row = await findUserById(payload.sub);
+    if (!row) {
+      return NextResponse.json({ user: null });
+    }
+    return NextResponse.json({
+      user: {
+        id: row.id,
+        username: row.username,
+        email: row.email,
+        nickname: row.nickname,
+      },
+    });
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message.includes("DATABASE_URL")) {
+      return NextResponse.json({ user: null });
+    }
+    console.error("[auth/me]", e);
     return NextResponse.json({ user: null });
   }
-  return NextResponse.json({
-    user: {
-      id: row.id,
-      username: row.username,
-      email: row.email,
-      nickname: row.nickname,
-    },
-  });
 }

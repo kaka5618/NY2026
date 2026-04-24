@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from "jose";
-import type { UserRowPublic } from "@/server/db/user-store";
+import type { UserRowPublic } from "@/server/db/user-types";
 
 /** Cookie 名称（httpOnly 会话） */
 export const SESSION_COOKIE = "vb_session";

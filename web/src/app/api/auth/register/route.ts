@@ -1,7 +1,7 @@
-import { randomUUID } from "crypto";
+import { DatabaseError } from "pg";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
-import { createUser } from "@/server/db/user-store";
+import { createUser } from "@/server/db/users-repo";
 import { parseRegisterBody } from "@/server/auth/validate";
 import { SESSION_COOKIE, sessionCookieOptions, signSessionToken } from "@/server/auth/session";
 
@@ -25,17 +25,13 @@ export async function POST(req: Request): Promise<Response> {
 
   const { username, password, email, nickname } = parsed.data;
   const passwordHash = bcrypt.hashSync(password, 12);
-  const now = Date.now();
-  const id = randomUUID();
 
   try {
-    const user = createUser({
-      id,
+    const user = await createUser({
       username,
       email,
       passwordHash,
       nickname,
-      createdAt: now,
     });
     const token = await signSessionToken(user);
     const res = NextResponse.json({
@@ -44,9 +40,11 @@ export async function POST(req: Request): Promise<Response> {
     res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
     return res;
   } catch (e: unknown) {
-    const code = e && typeof e === "object" && "code" in e ? (e as { code: string }).code : "";
-    if (code === "DUPLICATE") {
+    if (e instanceof DatabaseError && e.code === "23505") {
       return NextResponse.json({ error: "用户名或邮箱已被使用" }, { status: 409 });
+    }
+    if (e instanceof Error && e.message.includes("DATABASE_URL")) {
+      return NextResponse.json({ error: "服务器未配置数据库，请联系管理员" }, { status: 503 });
     }
     console.error("[auth/register]", e);
     return NextResponse.json({ error: "注册失败，请稍后重试" }, { status: 500 });
